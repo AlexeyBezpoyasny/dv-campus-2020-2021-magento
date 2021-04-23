@@ -6,62 +6,56 @@ namespace OleksiiBezpoiasnyi\RegularCustomer\Block;
 
 use Magento\Framework\Phrase;
 use OleksiiBezpoiasnyi\RegularCustomer\Model\DiscountRequest;
-use OleksiiBezpoiasnyi\RegularCustomer\Model\ResourceModel\DiscountRequest\Collection as DiscountRequestCollection;
+use OleksiiBezpoiasnyi\RegularCustomer\Api\Data\DiscountRequestInterface;
 
 class PersonalDiscountInfo extends \Magento\Framework\View\Element\Template
 {
-    private \OleksiiBezpoiasnyi\RegularCustomer\Model\ResourceModel\DiscountRequest\CollectionFactory $collectionFactory;
+    private \OleksiiBezpoiasnyi\RegularCustomer\Model\Api\DiscountRequestRepository $discountRequestRepository;
+    private \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder;
     private \Magento\Store\Model\StoreManagerInterface $storeManager;
     private \Magento\Customer\Model\Session $customerSession;
 
     /**
      * PersonalDiscountInfo constructor.
-     * @param \OleksiiBezpoiasnyi\RegularCustomer\Model\ResourceModel\DiscountRequest\CollectionFactory $collectionFactory
+     * @param \OleksiiBezpoiasnyi\RegularCustomer\Model\Api\DiscountRequestRepository $discountRequestRepository
+     * @param \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder
      * @param \Magento\Store\Model\StoreManagerInterface $storeManager
      * @param \Magento\Framework\View\Element\Template\Context $context
      * @param \Magento\Customer\Model\Session $customerSession
      * @param array $data
      */
     public function __construct(
-        \OleksiiBezpoiasnyi\RegularCustomer\Model\ResourceModel\DiscountRequest\CollectionFactory $collectionFactory,
+        \OleksiiBezpoiasnyi\RegularCustomer\Model\Api\DiscountRequestRepository $discountRequestRepository,
+        \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder,
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         \Magento\Framework\View\Element\Template\Context $context,
         \Magento\Customer\Model\Session $customerSession,
         array $data = []
     ) {
         parent::__construct($context, $data);
-        $this->collectionFactory = $collectionFactory;
+        $this->discountRequestRepository = $discountRequestRepository;
+        $this->searchCriteriaBuilder = $searchCriteriaBuilder;
         $this->storeManager = $storeManager;
         $this->customerSession = $customerSession;
     }
 
     /**
-     * @return DiscountRequest|null
-     * @throws \Magento\Framework\Exception\NoSuchEntityException
-     * @throws \Magento\Framework\Exception\LocalizedException
+     * @return DiscountRequestInterface[]
      */
-
-    // @TODO: implement discount assignment of the admin
-
-    public function getPersonalDiscount(): ?DiscountRequest
+    public function getPersonalDiscount(): array
     {
-        $customerId = $this->customerSession->getCustomerData()->getId();
+        $this->searchCriteriaBuilder->addFilter('customer_id', $this->customerSession->getCustomer()->getId());
+        $this->searchCriteriaBuilder->addFilter('website_id', $this->storeManager->getStore()->getWebsiteId());
+        $searchResult = $this->discountRequestRepository->getList($this->searchCriteriaBuilder->create());
 
-        /** @var DiscountRequestCollection $collection */
-        $collection = $this->collectionFactory->create();
-        $collection->addFieldToFilter('customer_id', $customerId);
-        $collection->addFieldToFilter('website_id', $this->storeManager->getStore()->getWebsiteId());
-        /** @var DiscountRequest $discountRequest */
-        $discountRequest = $collection->getFirstItem();
-
-        return $discountRequest->getRequestId() ? $discountRequest : null;
+        return $searchResult->getItems();
     }
 
     /**
-     * @param DiscountRequest $discountRequest
+     * @param DiscountRequestInterface $discountRequest
      * @return Phrase
      */
-    public function getStatusMessage(DiscountRequest $discountRequest): Phrase
+    public function getStatusMessage(DiscountRequestInterface $discountRequest): Phrase
     {
         switch ($discountRequest->getStatus()) {
             case DiscountRequest::STATUS_PENDING:
