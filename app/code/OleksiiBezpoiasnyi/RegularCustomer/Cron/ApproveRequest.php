@@ -36,17 +36,19 @@ class ApproveRequest
     {
         /** @var DiscountRequestCollection $collection */
         $collection = $this->collectionFactory->create();
-        $collection->addFieldToFilter('status', DiscountRequest::STATUS_PENDING);
+        $collection->addFieldToFilter('status', DiscountRequest::STATUS_PENDING)
+            ->addFieldToFilter(
+                'created_at',
+                ['lt' => date('Y-m-d H:i:s', strtotime('-3 days'))]
+            );
 
         $transaction = $this->transactionFactory->create();
 
         /** @var DiscountRequest $discountRequest */
         foreach ($collection as $discountRequest) {
-            if (strtotime($discountRequest->getCreatedAt()) >= strtotime('-3 days')) {
-                $discountRequest->setStatus(DiscountRequest::STATUS_APPROVED)
-                                ->setStatusChangedAt(time());
-                $transaction->addObject($discountRequest);
-            }
+            $discountRequest->setStatus(DiscountRequest::STATUS_APPROVED)
+                ->setStatusChangedAt(time());
+            $transaction->addObject($discountRequest);
         }
 
         $transaction->save();

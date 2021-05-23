@@ -17,12 +17,10 @@ class MassSendEmail extends AbstractMassAction
     private \Magento\Catalog\Model\ProductRepository $productRepository;
     private \Magento\Customer\Model\ResourceModel\CustomerRepository $customerRepository;
     private \Magento\Store\Model\StoreManager $storeManager;
-    private \OleksiiBezpoiasnyi\RegularCustomer\Model\DiscountRequestFactory $discountRequestFactory;
 
     /**
      * MassSendEmail constructor.
      *
-     * @param \OleksiiBezpoiasnyi\RegularCustomer\Model\DiscountRequestFactory $discountRequestFactory
      * @param \Magento\Ui\Component\MassAction\Filter $filter
      * @param \OleksiiBezpoiasnyi\RegularCustomer\Model\ResourceModel\DiscountRequest\CollectionFactory $discountRequestCollectionFactory
      * @param \Magento\Framework\DB\TransactionFactory $transaction
@@ -34,7 +32,6 @@ class MassSendEmail extends AbstractMassAction
      * @param \Magento\Store\Model\StoreManager $storeManager
      */
     public function __construct(
-        \OleksiiBezpoiasnyi\RegularCustomer\Model\DiscountRequestFactory $discountRequestFactory,
         \Magento\Ui\Component\MassAction\Filter $filter,
         \OleksiiBezpoiasnyi\RegularCustomer\Model\ResourceModel\DiscountRequest\CollectionFactory $discountRequestCollectionFactory,
         \Magento\Framework\DB\TransactionFactory $transaction,
@@ -50,7 +47,6 @@ class MassSendEmail extends AbstractMassAction
         $this->productRepository = $productRepository;
         $this->customerRepository = $customerRepository;
         $this->storeManager = $storeManager;
-        $this->discountRequestFactory = $discountRequestFactory;
     }
 
     /**
@@ -61,6 +57,10 @@ class MassSendEmail extends AbstractMassAction
         /** @var Transaction $transaction */
         $transaction = $this->transactionFactory->create();
         $collection = $this->filter->getCollection($this->discountRequestCollectionFactory->create());
+        $collection->addFieldToFilter(
+            'status',
+            ['in' => [DiscountRequest::STATUS_APPROVED, DiscountRequest::STATUS_DECLINED]]
+        );
 
         /** @var DiscountRequest $discountRequest */
         $collectionSize = $collection->count();
@@ -77,24 +77,18 @@ class MassSendEmail extends AbstractMassAction
                 ->getById($discountRequest->getProductId(), false, $storeId)
                 ->getName();
 
-            switch ($discountRequest->getStatus()) {
-                case DiscountRequest::STATUS_APPROVED:
-                    $this->email->sendRequestApprovedEmail($customerEmail, $productName, $storeId);
-                    $discountRequest->setEmailSent(1);
-                    $transaction->addObject($discountRequest);
-                    break;
-                case DiscountRequest::STATUS_DECLINED:
-                    $this->email->sendRequestDeclinedEmail($customerEmail, $productName, $storeId);
-                    $discountRequest->setEmailSent(1);
-                    $transaction->addObject($discountRequest);
-                    break;
-                default:
-                    break;
+            if ($discountRequest->getStatus() == DiscountRequest::STATUS_APPROVED) {
+                $this->email->sendRequestApprovedEmail($customerEmail, $productName, $storeId);
+                $discountRequest->setEmailSent(1);
+                $transaction->addObject($discountRequest);
+            } else {
+                $this->email->sendRequestDeclinedEmail($customerEmail, $productName, $storeId);
+                $discountRequest->setEmailSent(1);
+                $transaction->addObject($discountRequest);
             }
         }
 
         $transaction->save();
-        // ToDo change send email counter to the correct one (only for approved and decline requests)
         $this->messageManager->addSuccessMessage(__('For %1 requests(s) was sent email.', $collectionSize));
 
         /** @var \Magento\Backend\Model\View\Result\Redirect $resultRedirect */
