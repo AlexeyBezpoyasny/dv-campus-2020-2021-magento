@@ -6,7 +6,7 @@ namespace OleksiiBezpoiasnyi\RegularCustomer\Observer;
 use Magento\Customer\Model\Customer;
 use Magento\Framework\Event\Observer;
 use OleksiiBezpoiasnyi\RegularCustomer\Model\DiscountRequest;
-use OleksiiBezpoiasnyi\RegularCustomer\Model\ResourceModel\DiscountRequest\Collection as DiscountRequestCollection;
+use OleksiiBezpoiasnyi\RegularCustomer\Model\ResourceModel\DiscountRequest\Collection;
 
 class GuestToCustomerDiscountRequests implements \Magento\Framework\Event\ObserverInterface
 {
@@ -43,25 +43,22 @@ class GuestToCustomerDiscountRequests implements \Magento\Framework\Event\Observ
         /** @var Customer $customer */
         $customer = $observer->getData('customer');
         $customerId = $customer->getId();
-
         $guestEmail = $this->customerSession->getData('guest_email');
         $guestProductList = $this->customerSession->getData('product_list');
 
-        /** @var DiscountRequestCollection $collection */
+        /** @var Collection $collection */
         $collection = $this->collectionFactory->create();
-        $collection->addFieldToFilter('product_id', $guestProductList);
+        $collection->addFieldToFilter('product_id', ['in' => $guestProductList])
+            ->addFieldToFilter('customer_id', ['eq' => 'NULL'])
+            ->addFieldToFilter('email', $guestEmail);
 
         $transaction = $this->transactionFactory->create();
 
         /** @var DiscountRequest $discountRequest */
         foreach ($collection as $discountRequest) {
-            if (!$discountRequest->getCustomerId() && $discountRequest->getEmail() === $guestEmail) {
-                $discountRequest->setCustomerId($customerId);
-
-                $transaction->addObject($discountRequest);
-            }
+            $discountRequest->setCustomerId($customerId);
+            $transaction->addObject($discountRequest);
         }
-
         $transaction->save();
     }
 }
