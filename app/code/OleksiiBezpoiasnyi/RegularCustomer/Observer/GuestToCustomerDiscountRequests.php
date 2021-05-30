@@ -49,7 +49,7 @@ class GuestToCustomerDiscountRequests implements \Magento\Framework\Event\Observ
         /** @var Collection $collection */
         $collection = $this->collectionFactory->create();
         $collection->addFieldToFilter('product_id', ['in' => $guestProductList])
-            ->addFieldToFilter('customer_id', ['eq' => 'NULL'])
+            ->addFieldToFilter('customer_id', ['null' => true])
             ->addFieldToFilter('email', $guestEmail);
 
         $transaction = $this->transactionFactory->create();
