@@ -47,6 +47,7 @@ services:
       - .:/var/www/html
       - ${SSL_CERTIFICATES_DIR}:/certs
       - ./docker/virtual-host-dev.conf:/etc/apache2/sites-enabled/virtual-host.conf
+      - COMPOSER_VERSION=1
       # IMPORTANT! The below configuration is for Mac only to enable Docker Sync Stack. Don't commit!
       #- oleksii-bezpoiasnyi-local-build-sync:/var/www/html:nocopy
 
