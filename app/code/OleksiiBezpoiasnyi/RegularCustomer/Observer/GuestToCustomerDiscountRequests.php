@@ -39,7 +39,6 @@ class GuestToCustomerDiscountRequests implements \Magento\Framework\Event\Observ
      */
     public function execute(Observer $observer): void
     {
-
         /** @var Customer $customer */
         $customer = $observer->getData('customer');
         $customerId = $customer->getId();
@@ -56,9 +55,21 @@ class GuestToCustomerDiscountRequests implements \Magento\Framework\Event\Observ
 
         /** @var DiscountRequest $discountRequest */
         foreach ($collection as $discountRequest) {
+            $this->validateEmail($discountRequest->getEmail());
             $discountRequest->setCustomerId($customerId);
             $transaction->addObject($discountRequest);
         }
+
         $transaction->save();
+    }
+
+    /**
+     * @param $email
+     */
+    private function validateEmail ($email): void
+    {
+        if (filter_var($email, \FILTER_VALIDATE_EMAIL) === false) {
+            throw new \InvalidArgumentException('Request(s) cannot be merged because email is not valid');
+        }
     }
 }
