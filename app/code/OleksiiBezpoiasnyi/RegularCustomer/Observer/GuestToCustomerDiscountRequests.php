@@ -5,6 +5,7 @@ namespace OleksiiBezpoiasnyi\RegularCustomer\Observer;
 
 use Magento\Customer\Model\Customer;
 use Magento\Framework\Event\Observer;
+use Magento\Framework\Exception\LocalizedException;
 use OleksiiBezpoiasnyi\RegularCustomer\Model\DiscountRequest;
 use OleksiiBezpoiasnyi\RegularCustomer\Model\ResourceModel\DiscountRequest\Collection;
 
@@ -45,6 +46,8 @@ class GuestToCustomerDiscountRequests implements \Magento\Framework\Event\Observ
         $guestEmail = $this->customerSession->getData('guest_email');
         $guestProductList = $this->customerSession->getData('product_list');
 
+        $this->validateEmail($guestEmail);
+
         /** @var Collection $collection */
         $collection = $this->collectionFactory->create();
         $collection->addFieldToFilter('product_id', ['in' => $guestProductList])
@@ -55,7 +58,6 @@ class GuestToCustomerDiscountRequests implements \Magento\Framework\Event\Observ
 
         /** @var DiscountRequest $discountRequest */
         foreach ($collection as $discountRequest) {
-            $this->validateEmail($discountRequest->getEmail());
             $discountRequest->setCustomerId($customerId);
             $transaction->addObject($discountRequest);
         }
@@ -65,11 +67,13 @@ class GuestToCustomerDiscountRequests implements \Magento\Framework\Event\Observ
 
     /**
      * @param $email
+     * @throws \Zend_Validate_Exception
+     * @throws LocalizedException
      */
     private function validateEmail ($email): void
     {
-        if (filter_var($email, \FILTER_VALIDATE_EMAIL) === false) {
-            throw new \InvalidArgumentException('Request(s) cannot be merged because email is not valid');
+        if (!\Zend_Validate::is($email, \Magento\Framework\Validator\EmailAddress::class)) {
+            throw new LocalizedException(__('Request(s) cannot be merged because email is not valid'));
         }
     }
 }

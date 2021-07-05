@@ -20,11 +20,13 @@ class DiscountRequest extends \Magento\Framework\Model\ResourceModel\Db\Abstract
 
     /**
      * @throws LocalizedException
+     * @throws \Zend_Validate_Exception
      */
     protected function _beforeSave(\Magento\Framework\Model\AbstractModel $object): DiscountRequest
     {
         $email = $object->getData('email');
-        if (false === \strpos($email, '@')) {
+
+        if (!\Zend_Validate::is($email, \Magento\Framework\Validator\EmailAddress::class)) {
             throw new LocalizedException(__('The email address is invalid. Verify the email address and try again.'));
         }
 
